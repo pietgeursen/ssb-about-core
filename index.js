@@ -2,27 +2,11 @@ var pull = require('pull-stream')
 var ref = require('ssb-ref')
 var Defer = require('pull-defer')
 
-exports.name = 'about'
-exports.version = require('./package.json').version
-
-exports.manifest = {
-  socialValue: 'async',
-  latestValue: 'async',
-  socialValues: 'async',
-  latestValues: 'async', // get about values of chosen keys
-
-  socialValueStream: 'source', // get the final value (based on authorId and yourId)
-  socialValuesStream: 'source', // get all values known in your network
-  latestValueStream: 'source', // latest value set in your network
-
-  read: 'source'
-}
-
-exports.init = function (ssb, config) {
+exports = function ({ pubKey, getMsg, getAbout }) {
   return {
 
     // streams
-    read,
+    getAbout,
     socialValueStream: function ({ key, dest }) {
       var stream = Defer.source()
       getAuthor(dest, (err, authorId) => {
@@ -40,7 +24,7 @@ exports.init = function (ssb, config) {
                 values[author] = item[author]
               }
             })
-            return getSocialValue(values, ssb.id, authorId)
+            return getSocialValue(values, pubKey, authorId)
           })
         ))
       })
@@ -55,7 +39,7 @@ exports.init = function (ssb, config) {
         if (err) return cb(err)
         socialValues({ key, dest }, (err, values) => {
           if (err) return cb(err)
-          cb(null, getSocialValue(values, ssb.id, authorId))
+          cb(null, getSocialValue(values, pubKey, authorId))
         })
       })
     },
@@ -68,7 +52,7 @@ exports.init = function (ssb, config) {
     var values = {}
     var sync = false
     return pull(
-      read({ dest, live: true, old: true }),
+      getAbout({ dest, live: true, old: true }),
       pull.map((msg) => {
         if (msg.sync) {
           var result = values
@@ -119,7 +103,7 @@ exports.init = function (ssb, config) {
     var authors = []
     var sync = false
     return pull(
-      read({ dest, live: true, old: true }),
+      getAbout({ dest, live: true, old: true }),
       pull.map((msg) => {
         if (msg.sync) {
           sync = true
@@ -153,7 +137,7 @@ exports.init = function (ssb, config) {
   function socialValues ({ key, dest }, cb) {
     var values = {}
     pull(
-      read({ dest }),
+      getAbout({ dest }),
       pull.drain(msg => {
         if (msg.value.content[key]) {
           values[msg.value.author] = msg.value.content[key]
@@ -168,7 +152,7 @@ exports.init = function (ssb, config) {
   function latestValue ({ key, dest }, cb) {
     var value = null
     pull(
-      read({ dest, reverse: true }),
+      getAbout({ dest, reverse: true }),
       pull.filter(msg => {
         return msg.value.content && key in msg.value.content && !(msg.value.content[key] && msg.value.content[key].remove)
       }),
@@ -185,7 +169,7 @@ exports.init = function (ssb, config) {
   function latestValues ({ keys, dest }, cb) {
     var values = {}
     pull(
-      read({ dest, reverse: true }),
+      getAbout({ dest, reverse: true }),
       pull.drain(msg => {
         if (msg.value.content) {
           for (var key in msg.value.content) {
@@ -201,24 +185,10 @@ exports.init = function (ssb, config) {
     )
   }
 
-  function read ({ reverse = false, limit, live, old, dest }) {
-    return pull(
-      ssb.backlinks.read({
-        reverse,
-        live,
-        limit,
-        query: [{ $filter: {
-          dest,
-          value: { content: { type: 'about', about: dest } }
-        } }]
-      })
-    )
-  }
-
   function getAuthor (msgId, cb) {
     if (ref.isFeedId(msgId)) return cb(null, msgId)
     if (ref.isMsgId(msgId)) {
-      ssb.get({ id: msgId, raw: true }, (err, value) => {
+      getMsg({ id: msgId, raw: true }, (err, value) => {
         if (err) return cb(err)
         cb(null, value.author)
       })

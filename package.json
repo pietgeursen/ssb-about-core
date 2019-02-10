@@ -1,14 +1,13 @@
 {
-  "name": "ssb-about",
-  "description": "scuttlebot plugin for getting reduced 'about' state",
-  "version": "2.0.0",
-  "homepage": "https://github.com/ssbc/ssb-about",
+  "name": "ssb-about-core",
+  "description": "get reduced 'about' state. Not a ssb-plugin",
+  "version": "1.0.0",
+  "homepage": "https://github.com/pietgeursen/ssb-about-core",
   "repository": {
     "type": "git",
     "url": "git://github.com/ssbc/ssb-about.git"
   },
   "dependencies": {
-    "flumeview-reduce": "^1.3.9",
     "pull-defer": "^0.2.3",
     "pull-stream": "^3.6.9",
     "ssb-ref": "^2.7.1"
